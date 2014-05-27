@@ -19,7 +19,7 @@ local bcmioctlout = Proto("bcmioctlout", "BCM WLAN dissector- IOCTLout")
 local bcmioctlin = Proto("bcmioctlin", "BCM WLAN dissector- IOCTLin")
 local f = bcmioctlout.fields
 local cdc_ioctl_cmd_strings = {}
-
+local band_strings = {}
 
 function bcmioctlout.init()
 	local udp_table = DissectorTable.get("ethertype")
@@ -43,6 +43,40 @@ function is_int_var(wlc_var)
 
 	for i,v in pairs(int_vars) do
 		if v == wlc_var then
+			return true
+		end
+	end
+	return false
+end
+
+function is_int_cmd(wlc_cmd)
+	local int_cmds = {
+		1,   -- GET_VERSION
+		2,   -- UP
+		3,   -- DOWN
+		10,  -- SET_PROMISC
+		12,  -- GET_RATE
+		20,  -- SET_INFRA
+		28,  -- TERMINATED
+		29,  -- GET_CHANNEL
+		30,  -- SET_CHANNEL
+		32,  -- SET_SRL
+		34,  -- SET_LRL
+		38,  -- SET_RADIO
+		49,  -- SET_PASSIVE_SCAN
+		76,  -- SET_BCNPRD
+		77,  -- GET_DTIMPRD
+		78,  -- SET_DTIMPRD
+		86,  -- SET_PM
+		118, -- SET_AP
+		158, -- SET_SCB_TIMEOUT
+		185, -- SET_SCAN_CHANNEL_TIME
+		187, -- SET_SCAN_UNASSOC_TIME
+		258  -- SET_SCAN_PASSIVE_TIME
+	}
+
+	for i, cmd in pairs(int_cmds) do
+		if cmd == wlc_cmd then
 			return true
 		end
 	end
@@ -82,6 +116,7 @@ function dissector(inbuffer, pinfo, tree, out)
 	header:add_le(f.bcm_cdc_ioctl_cmd, buffer(n, 4)); n = n + 4
 	header:add_le(f.bcm_cdc_ioctl_len, buffer(n, 4)); n = n + 4
 	header:add_le(f.bcm_cdc_ioctl_flags, buffer(n, 4)); n = n + 4
+	local status = buffer(n, 4):le_int()
 	header:add_le(f.bcm_cdc_ioctl_status, buffer(n, 4)); n = n + 4
 
 	local cmd_str
@@ -96,7 +131,52 @@ function dissector(inbuffer, pinfo, tree, out)
 	if buffer:len() > n then
 		local par = subtree:add(bcm, buffer(n), cmd_str)
 
-		if (cmd == 262 and out == 1) then
+		if is_int_cmd(cmd) then
+			local value = buffer(n, 4)
+			pinfo.cols.info:append(" "..value:le_uint())
+			par:add_le(f.value32, value); n = n + 4
+			if buffer:len() > n then
+				par:add(f.unused, buffer(n)); n = buffer:len()
+			end
+		elseif (cmd == 23) then
+			-- WLC_GET_BSSID
+			par:add_le(f.WLC_GET_BSSID_bssid, buffer(n, 6)); n = n + 6
+		elseif (cmd == 26) then
+			-- WLC_SET_SSID
+			par:add_le(f.WLC_SET_SSID_SSID_len, buffer(n, 4)); n = n + 4
+			par:add_le(f.WLC_SET_SSID_SSID, buffer(n, 32)); n = n + 32
+			par:add_le(f.WLC_SET_SSID_bssid, buffer(n, 6)); n = n + 6
+			par:add_le(f.WLC_SET_SSID_chanspec_num, buffer(n, 4)); n = n + 4
+			par:add_le(f.WLC_SET_SSID_chanspec_list, buffer(n, 2)); n = n + 2
+		elseif (cmd == 50) then
+			-- WLC_SCAN
+			par:add_le(f.WLC_SCAN_ssid_le, buffer(n, 36)); n = n + 36
+			par:add_le(f.WLC_SCAN_bssid, buffer(n, 6)); n = n + 6
+			par:add_le(f.WLC_SCAN_bss_type, buffer(n, 1)); n = n + 1
+			par:add_le(f.WLC_SCAN_scan_type, buffer(n, 1)); n = n + 1
+			par:add_le(f.WLC_SCAN_nprobes, buffer(n, 4)); n = n + 4
+			par:add_le(f.WLC_SCAN_active_time, buffer(n, 4)); n = n + 4
+			par:add_le(f.WLC_SCAN_passive_time, buffer(n, 4)); n = n + 4
+			par:add_le(f.WLC_SCAN_home_time, buffer(n, 4)); n = n + 4
+			par:add_le(f.WLC_SCAN_channel_num, buffer(n, 4)); n = n + 4
+			par:add_le(f.WLC_SCAN_channel_list, buffer(n, 2)); n = n + 2
+		elseif (cmd == 52) then
+			-- WLC_DISASSOC
+			par:add_le(f.WLC_DISASSOC_val, buffer(n, 4)); n = n + 4
+			par:add_le(f.WLC_DISASSOC_ea, buffer(n, 6)); n = n + 6
+		elseif (cmd == 55) then
+			-- WLC_SET_ROAM_TRIGGER
+			par:add_le(f.WLC_SET_ROAM_TRIGGER_level, buffer(n, 4)); n = n + 4
+			par:add_le(f.WLC_SET_ROAM_TRIGGER_band, buffer(n, 4)); n = n + 4
+		elseif (cmd == 57) then
+			-- WLC_SET_ROAM_DELTA
+			par:add_le(f.WLC_SET_ROAM_DELTA_delta, buffer(n, 4)); n = n + 4
+			par:add_le(f.WLC_SET_ROAM_DELTA_band, buffer(n, 4)); n = n + 4
+		elseif (cmd == 127) then
+			-- WLC_GET_RSSI
+			par:add_le(f.WLC_GET_RSSI_val, buffer(n, 4)); n = n + 4
+			par:add_le(f.WLC_GET_RSSI_ea, buffer(n, 6)); n = n + 6
+		elseif (cmd == 262 and out == 1) then
 			-- WLC_GET_VAR
 			pinfo.cols.info:append(" "..buffer(n):stringz())
 			par:add(f.bcm_var_name, buffer(n)); n = n + buffer(n):stringz():len() + 1
@@ -104,6 +184,7 @@ function dissector(inbuffer, pinfo, tree, out)
 			pinfo.cols.info:append(" <reply data>")
 		elseif (cmd == 263 and out == 1) then
 			-- WLC_SET_VAR
+			local parsed = false
 			local var_str = buffer(n):stringz()
 			pinfo.cols.info:append(" "..var_str)
 			par:add(f.bcm_var_name,  buffer(n)); n = n + var_str:len() + 1
@@ -112,9 +193,24 @@ function dissector(inbuffer, pinfo, tree, out)
 				local value = buffer(n, 4)
 				pinfo.cols.info:append(" "..value:le_uint())
 				par:add_le(f.value32, value); n = n + 4
-				if (buffer:len() > n) then
-					par:add(f.unused, buffer(n)); n = buffer:len()
+				parsed = true
+			elseif var_str == "arp_hostip" then
+				pinfo.cols.info:append(" "..tostring(buffer(n, 4):ipv4()))
+				par:add(f.bcm_var_arp_hostip, buffer(n, 4)); n = n + 4
+				parsed = true
+			elseif var_str == "cur_etheraddr" then
+				par:add_le(f.bcm_var_cur_etheraddr, buffer(n, 6)); n = n + 6
+				parsed = true
+			elseif var_str == "mcast_list" then
+				local count = buffer(n, 4):le_uint()
+				par:add_le(f.bcm_var_mcast_list_count, buffer(n, 4)); n = n + 4
+				for i = 1, count do
+					par:add_le(f.bcm_var_mcast_list_addr, buffer(n, 6)); n = n + 6
 				end
+				parsed = true
+			end
+			if parsed and buffer:len() > n then
+				par:add(f.unused, buffer(n)); n = buffer:len()
 			end
 		elseif (cmd == 263 and out == 0) then
 			pinfo.cols.info:append(" <reply data>")
@@ -125,6 +221,13 @@ function dissector(inbuffer, pinfo, tree, out)
 			par:add(f.data, buffer(n))
 		end
 
+		if (out == 0) then
+			if (status == 0) then
+				pinfo.cols.info:append(" OK")
+			else
+				pinfo.cols.info:append(" FAILED ("..status..")")
+			end
+		end
 	end
 end
 
@@ -450,6 +553,11 @@ cdc_ioctl_cmd_strings[316] = "WLC_SET_NAT_CONFIG"
 cdc_ioctl_cmd_strings[317] = "WLC_GET_NAT_STATE"
 cdc_ioctl_cmd_strings[318] = "WLC_LAST"
 
+band_strings[0] = "AUTO"
+band_strings[1] = "5G"
+band_strings[2] = "2G"
+band_strings[3] = "ALL"
+
 f.value32 = ProtoField.uint32("bcm_cdc_ioctl.value32", "value32", base.DEC)
 f.unused = ProtoField.bytes("bcm_cdc_ioctl.data", "unused")
 
@@ -463,5 +571,40 @@ f.bcm_cdc_ioctl_status = ProtoField.uint32("bcm_cdc_ioctl.status", "status", bas
 
 f.bcm_var_name = ProtoField.stringz("bcm_var_name", "var_name")
 
+f.bcm_var_cur_etheraddr = ProtoField.ether("bcm_var_cur_etheraddr", "cur_etheraddr")
 
+f.bcm_var_mcast_list_count = ProtoField.uint32("bcm_var_mcast_list.count", "count", base.DEC)
+f.bcm_var_mcast_list_addr = ProtoField.ether("bcm_var_mcast_list.addr", "addr")
 
+f.bcm_var_arp_hostip = ProtoField.ipv4("bcm_var_arp_hostip.ip", "ip")
+
+f.WLC_SET_SSID_SSID_len = ProtoField.uint32("bcm_cdc_ioctl.WLC_SET_SSID_SSID_len", "SSID_len")
+f.WLC_SET_SSID_SSID = ProtoField.bytes("bcm_cdc_ioctl.WLC_SET_SSID_SSID", "SSID")
+f.WLC_SET_SSID_bssid = ProtoField.ether("bcm_cdc_ioctl.WLC_SET_SSID_bssid", "bssid")
+f.WLC_SET_SSID_chanspec_num = ProtoField.uint32("bcm_cdc_ioctl.WLC_SET_SSID_chanspec_num", "chanspec_num")
+f.WLC_SET_SSID_chanspec_list = ProtoField.uint16("bcm_cdc_ioctl.WLC_SET_SSID_chanspec_list", "chanspec_list")
+
+f.WLC_SCAN_ssid_le = ProtoField.bytes("bcm_cdc_ioctl.WLC_SCAN_ssid_le", "ssid_le")
+f.WLC_SCAN_bssid = ProtoField.ether("bcm_cdc_ioctl.WLC_SCAN_bssid", "bssid")
+f.WLC_SCAN_bss_type = ProtoField.uint8("bcm_cdc_ioctl.WLC_SCAN_bss_type", "bss_type")
+f.WLC_SCAN_scan_type = ProtoField.uint8("bcm_cdc_ioctl.WLC_SCAN_scan_type", "scan_type")
+f.WLC_SCAN_nprobes = ProtoField.uint32("bcm_cdc_ioctl.WLC_SCAN_nprobes", "nprobes")
+f.WLC_SCAN_active_time = ProtoField.uint32("bcm_cdc_ioctl.WLC_SCAN_active_time", "active_time")
+f.WLC_SCAN_passive_time = ProtoField.uint32("bcm_cdc_ioctl.WLC_SCAN_passive_time", "passive_time")
+f.WLC_SCAN_home_time = ProtoField.uint32("bcm_cdc_ioctl.WLC_SCAN_home_time", "home_time")
+f.WLC_SCAN_channel_num = ProtoField.uint32("bcm_cdc_ioctl.WLC_SCAN_channel_num", "channel_num")
+f.WLC_SCAN_channel_list = ProtoField.uint16("bcm_cdc_ioctl.WLC_SCAN_channel_list", "channel_list")
+
+f.WLC_DISASSOC_val = ProtoField.uint32("bcm_cdc_ioctl.WLC_DISASSOC_val", "val")
+f.WLC_DISASSOC_ea = ProtoField.ether("bcm_cdc_ioctl.WLC_DISASSOC_ea", "ea")
+
+f.WLC_GET_BSSID_bssid = ProtoField.ether("bcm_cdc_ioctl.WLC_GET_BSSID_bssid", "bssid")
+
+f.WLC_SET_ROAM_TRIGGER_level = ProtoField.int32("bcm_cdc_ioctl.WLC_SET_ROAM_TRIGGER_level", "level")
+f.WLC_SET_ROAM_TRIGGER_band = ProtoField.uint32("bcm_cdc_ioctl.WLC_SET_ROAM_TRIGGER_band", "band", base.DEC, band_strings)
+
+f.WLC_SET_ROAM_DELTA_delta = ProtoField.int32("bcm_cdc_ioctl.WLC_SET_ROAM_DELTA_delta", "delta")
+f.WLC_SET_ROAM_DELTA_band = ProtoField.uint32("bcm_cdc_ioctl.WLC_SET_ROAM_DELTA_band", "band", base.DEC, band_strings)
+
+f.WLC_GET_RSSI_val = ProtoField.int32("bcm_cdc_ioctl.WLC_GET_RSSI_val", "val")
+f.WLC_GET_RSSI_ea = ProtoField.ether("bcm_cdc_ioctl.WLC_GET_RSSI_ea", "ea")

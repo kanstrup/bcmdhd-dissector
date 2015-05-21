@@ -289,7 +289,7 @@ function dissector(inbuffer, pinfo, tree, out)
 				n = n + parse_escan(bcm, buffer(n), pinfo, par)
 			elseif var_str == "bsscfg:p2p_scan" then
 				-- p2p_scan
-				n = n + 4 -- Undefined padding
+				par:add_le(f.brcmf_bsscfgidx, buffer(n, 4)); n = n + 4
 				local type = buffer(n, 1):le_uint()
 				par:add_le(f.bcm_var_p2p_scan_type, buffer(n, 1)); n = n + 1
 				par:add_le(f.bcm_var_p2p_scan_reserved, buffer(n, 3)); n = n + 3
@@ -298,7 +298,9 @@ function dissector(inbuffer, pinfo, tree, out)
 				end
 				parsed = true
 			elseif var_str == "bsscfg:p2p_state" then
+				par:add_le(f.brcmf_bsscfgidx, buffer(n, 4)); n = n + 4
 				par:add_le(f.bcm_var_p2p_state_state, buffer(n, 1)); n = n + 1
+				n = n + 1 -- unused padding in struct
 				n = n + parse_chanspec(bcm, buffer(n), pinfo, par, 0)
 				par:add_le(f.bcm_var_p2p_state_dwell, buffer(n, 2)); n = n + 2
 				parsed = true
@@ -797,6 +799,8 @@ f.brcmf_ssid_len = ProtoField.uint32("cm_cdc_ioctl.brcmf_ssid.len", "ssid_len")
 f.brcmf_ssid = ProtoField.stringz("cm_cdc_ioctl.brcmf_ssid.ssid", "ssid")
 
 f.brcmf_bssid = ProtoField.ether("bcm_cdc_ioctl.brcmf_bssid", "bssid")
+
+f.brcmf_bsscfgidx = ProtoField.uint32("bcm_cdc_ioctl.brcmf_bsscfgidx", "bsscfgidx")
 
 f.wl_scan_bss_type = ProtoField.uint8("bcm_cdc_ioctl.wl_scan.bss_type", "bss_type", base.DEC, bss_type_strings)
 f.wl_scan_scan_type = ProtoField.uint8("bcm_cdc_ioctl.wl_scan.scan_type", "scan_type", base.DEC, scan_type_strings)

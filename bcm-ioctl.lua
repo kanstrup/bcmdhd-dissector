@@ -95,7 +95,6 @@ end
 
 function parse_chanspec(bcm, buffer, pinfo, tree, use_subtree)
 	local n = 0
-	local channel = buffer(n, 1):uint()
 	local subtree
 	if (use_subtree == 1) then
 		subtree = tree:add(bcm, buffer(n, 2), "chanspec")

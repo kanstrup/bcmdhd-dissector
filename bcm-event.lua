@@ -162,6 +162,8 @@ event_type_strings[90] = "WLC_E_ACTION_FRAME_RX_NDIS"
 event_type_strings[91] = "WLC_E_AUTH_REQ"
 event_type_strings[92] = "WLC_E_TDLS_PEER_EVENT"
 event_type_strings[93] = "WLC_E_SPEEDY_RECREATE_FAIL"
+event_type_strings[127] = "WLC_E_BCMC_CREDIT_SUPPORT"
+event_type_strings[128] = "WLC_E_PSTA_PRIMARY_INTF_IND"
 
 event_status_strings[0] = "SUCCESS"
 event_status_strings[1] = "FAIL"

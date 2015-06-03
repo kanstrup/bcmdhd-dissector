@@ -15,24 +15,22 @@
 -- Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 local bit = require("bit")
-local bcm = Proto("bcmwlan", "BCM WLAN dissector")
+local bcm = Proto("bcmevent", "BCM WLAN dissector - event")
+local bcm_data = Proto("bcmeventrx", "BCM WLAN dissector - event (from data dump)")
 local f = bcm.fields
 local event_type_strings = {}
 local event_status_strings = {}
 
 function bcm.init()
-	local udp_table = DissectorTable.get("ethertype")
+	local eth_table = DissectorTable.get("ethertype")
 	local pattern = 0xBC01
-	udp_table:add(pattern, bcm)
+	eth_table:add(pattern, bcm)
+	pattern = 0x886C
+	eth_table:add(pattern, bcm_data)
 end
 
-
-function bcm.dissector(inbuffer, pinfo, tree)
+function parse_event(buffer, pinfo, tree)
 	local n = 0
-	local buffer = inbuffer
-	pinfo.cols.protocol = "bcmdhd Event"
-	pinfo.cols.info = ""
-
 	local subtree = tree:add(bcm, buffer(), "BCM Event protocol data")
 	local header = subtree:add(bcm, buffer(n, 8), "header")
 
@@ -66,6 +64,22 @@ function bcm.dissector(inbuffer, pinfo, tree)
 	if (buffer:len() > n) then
 		subtree:add(f.data, buffer(n))
 	end
+	return n
+end
+
+function bcm.dissector(inbuffer, pinfo, tree)
+	local n = 0
+	pinfo.cols.protocol = "bcmdhd Event"
+	pinfo.cols.info = ""
+	n = n + parse_event(inbuffer(n), pinfo, tree)
+end
+
+function bcm_data.dissector(inbuffer, pinfo, tree)
+	local n = 0
+	pinfo.cols.protocol = "bcmdhd Event (data dump)"
+	pinfo.cols.info = ""
+	n = n + 10 -- Skip some unknown data
+	n = n + parse_event(inbuffer(n), pinfo, tree)
 end
 
 event_type_strings[0] = "WLC_E_SET_SSID"

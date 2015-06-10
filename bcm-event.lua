@@ -29,6 +29,49 @@ function bcm.init()
 	eth_table:add(pattern, bcm_data)
 end
 
+function parse_ssid(bcm, buffer, pinfo, tree)
+	local n = 0
+	tree:add_le(f.brcmf_ssid_len, buffer(n, 1)); n = n + 1
+	tree:add(f.brcmf_ssid, buffer(n, 32)); n = n + 32
+	return n
+end
+
+function parse_bss_info(bcm, buffer, pinfo, tree)
+	local n = 0
+	local subtree
+	subtree = tree:add(bcm, buffer(n, 2), "bssinfo")
+	subtree:add_le(f.bss_info_version, buffer(n, 4)); n = n + 4
+	subtree:add_le(f.bss_info_length, buffer(n, 4)); n = n + 4
+	subtree:add_le(f.brcmf_bssid, buffer(n, 6)); n = n + 6
+	subtree:add_le(f.bss_info_beacon_period, buffer(n, 2)); n = n + 2
+	subtree:add_le(f.bss_info_capability, buffer(n, 2)); n = n + 2
+	n = n + parse_ssid(bcm, buffer(n), pinfo, subtree)
+	n = n + 1 -- padding in struct
+	local count = buffer(n, 4):le_uint()
+	subtree:add_le(f.bss_info_count, buffer(n, 4)); n = n + 4
+	subtree:add_le(f.bss_info_rates, buffer(n, 16)); n = n + 16
+	subtree:add_le(f.bss_info_chanspec, buffer(n, 2)); n = n + 2
+	subtree:add_le(f.bss_info_atim_window, buffer(n, 2)); n = n + 2
+	subtree:add_le(f.bss_info_dtim_period, buffer(n, 1)); n = n + 1
+	n = n + 1 -- padding in struct
+	subtree:add_le(f.bss_info_RSSI, buffer(n, 2)); n = n + 2
+	subtree:add_le(f.bss_info_phy_noise, buffer(n, 1)); n = n + 1
+	subtree:add_le(f.bss_info_n_cap, buffer(n, 1)); n = n + 1
+	n = n + 2 -- padding in struct
+	subtree:add_le(f.bss_info_nbss_cap, buffer(n, 4)); n = n + 4
+	subtree:add_le(f.bss_info_ctl_ch, buffer(n, 1)); n = n + 1
+	n = n + 3 -- padding in struct
+	subtree:add_le(f.bss_info_reserved32, buffer(n, 4)); n = n + 4
+	subtree:add_le(f.bss_info_flags, buffer(n, 1)); n = n + 1
+	subtree:add_le(f.bss_info_reserved, buffer(n, 3)); n = n + 3
+	subtree:add_le(f.bss_info_basic_mcs, buffer(n, 16)); n = n + 16
+	subtree:add_le(f.bss_info_ie_offset, buffer(n, 2)); n = n + 2
+	n = n + 2 -- padding in struct
+	subtree:add_le(f.bss_info_ie_length, buffer(n, 4)); n = n + 4
+	subtree:add_le(f.bss_info_SNR, buffer(n, 2)); n = n + 2
+	return n
+end
+
 function parse_event(buffer, pinfo, tree)
 	local n = 0
 	local subtree = tree:add(bcm, buffer(), "BCM Event protocol data")
@@ -55,14 +98,30 @@ function parse_event(buffer, pinfo, tree)
 	header:add(f.event_ifname, buffer(n, 16)); n = n + 16
 	header:add(f.event_ifidx, buffer(n, 1)); n = n + 1
 	header:add(f.event_bsscfgidx, buffer(n, 1)); n = n + 1
-
 	if (event_type == 69) then -- escan results
 		pinfo.cols.info:append(" " .. tostring(addr))
 	end
 
+	if (buffer:len() <= n) then
+		-- No event data is present in capture.
+		return n
+	end
+
+	local par = subtree:add(bcm, buffer(n), event_type_str)
+	if (event_type == 69) then -- escan results
+		par:add_le(f.ESCAN_RESULT_buflen, buffer(n, 4)); n = n + 4
+		par:add_le(f.ESCAN_RESULT_version, buffer(n, 4)); n = n + 4
+		par:add_le(f.ESCAN_RESULT_sync_id, buffer(n, 2)); n = n + 2
+		local count = buffer(n, 2):le_uint()
+		par:add_le(f.ESCAN_RESULT_bss_count, buffer(n, 2)); n = n + 2
+		for i = 1, count do
+			n = n + parse_bss_info(bcm, buffer(n), pinfo, par, 1)
+		end
+	end
+
 	-- add data not parsed above
 	if (buffer:len() > n) then
-		subtree:add(f.data, buffer(n))
+		par:add(f.data, buffer(n))
 	end
 	return n
 end
@@ -210,3 +269,34 @@ f.event_ifname = ProtoField.stringz("bcm_event.ifname", "ifname")
 f.event_ifidx = ProtoField.uint8("bcm_event.ifidx", "ifidx", base.DEC)
 f.event_bsscfgidx = ProtoField.uint8("bcm_event.bsscfgidx", "bsscfgidx", base.DEC)
 
+f.brcmf_bssid = ProtoField.ether("bcm_event.brcmf_bssid", "bssid")
+f.brcmf_ssid_len = ProtoField.uint8("bcm_event.brcmf_ssid.len", "ssid_len")
+f.brcmf_ssid = ProtoField.stringz("bcm_event.brcmf_ssid.ssid", "ssid")
+
+f.bss_info_version = ProtoField.uint32("bcm_event.bss_info_version", "bss_info_version")
+f.bss_info_length = ProtoField.uint32("bcm_event.bss_info_length", "bss_info_length")
+f.bss_info_beacon_period = ProtoField.uint16("bcm_event.bss_info_beacon_period", "bss_info_beacon_period")
+f.bss_info_capability = ProtoField.uint16("bcm_event.bss_info_capability", "bss_info_capability")
+f.bss_info_count = ProtoField.uint32("bcm_event.bss_info_count", "bss_info_count")
+f.bss_info_rates = ProtoField.bytes("bcm_event.bss_info_rates", "bss_info_rates")
+f.bss_info_chanspec = ProtoField.uint16("bcm_event.bss_info_chanspec", "bss_info_chanspec")
+f.bss_info_atim_window = ProtoField.uint16("bcm_event.bss_info_atim_window", "bss_info_atim_window")
+f.bss_info_dtim_period = ProtoField.uint8("bcm_event.bss_info_dtim_period", "bss_info_dtim_period")
+f.bss_info_RSSI = ProtoField.int16("bcm_event.bss_info_RSSI", "bss_info_RSSI")
+f.bss_info_phy_noise = ProtoField.uint8("bcm_event.bss_info_phy_noise", "bss_info_phy_noise")
+f.bss_info_n_cap = ProtoField.uint8("bcm_event.bss_info_n_cap", "bss_info_n_cap")
+f.bss_info_nbss_cap = ProtoField.uint32("bcm_event.bss_info_nbss_cap", "bss_info_nbss_cap")
+f.bss_info_ctl_ch = ProtoField.uint8("bcm_event.bss_info_ctl_ch", "bss_info_ctl_ch")
+f.bss_info_reserved32 = ProtoField.uint32("bcm_event.bss_info_reserved32", "bss_info_reserved32")
+f.bss_info_flags = ProtoField.uint8("bcm_event.bss_info_flags", "bss_info_flags")
+f.bss_info_reserved = ProtoField.bytes("bcm_event.bss_info_reserved", "bss_info_reserved")
+f.bss_info_basic_mcs = ProtoField.bytes("bcm_event.bss_info_basic_mcs", "bss_info_basic_mcs")
+f.bss_info_ie_offset = ProtoField.uint16("bcm_event.bss_info_ie_offset", "bss_info_ie_offset")
+f.bss_info_ie_length = ProtoField.uint32("bcm_event.bss_info_ie_length", "bss_info_ie_length")
+f.bss_info_SNR = ProtoField.uint16("bcm_event.bss_info_SNR", "bss_info_SNR")
+
+f.ESCAN_RESULT_buflen = ProtoField.uint32("bcm_event.ESCAN_RESULT_buflen", "buflen")
+f.ESCAN_RESULT_version = ProtoField.uint32("bcm_event.ESCAN_RESULT_version", "version")
+f.ESCAN_RESULT_sync_id = ProtoField.uint16("bcm_event.ESCAN_RESULT_sync_id", "sync_id")
+f.ESCAN_RESULT_bss_count = ProtoField.uint16("bcm_event.ESCAN_RESULT_bss_count", "bss_count")
+f.ESCAN_RESULT_bss_info_le = ProtoField.bytes("bcm_event.ESCAN_RESULT_bss_info_le", "bss_info_le")

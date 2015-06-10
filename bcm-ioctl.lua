@@ -14,7 +14,7 @@
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-local bit = require("bit")
+--local bit = require("bit")
 local bcmioctlout = Proto("bcmioctlout", "BCM WLAN dissector- IOCTLout")
 local bcmioctlin = Proto("bcmioctlin", "BCM WLAN dissector- IOCTLin")
 local f = bcmioctlout.fields

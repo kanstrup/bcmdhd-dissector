@@ -14,7 +14,7 @@
 -- along with this program; if not, write to the Free Software
 -- Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-local bit = require("bit")
+-- local bit = require("bit")
 local bcm = Proto("bcmevent", "BCM WLAN dissector - event")
 local bcm_data = Proto("bcmeventrx", "BCM WLAN dissector - event (from data dump)")
 local f = bcm.fields

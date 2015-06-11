@@ -238,6 +238,38 @@ function dissector(inbuffer, pinfo, tree, out)
 			-- WLC_GET_RSSI
 			par:add_le(f.WLC_GET_RSSI_val, buffer(n, 4)); n = n + 4
 			par:add_le(f.WLC_GET_RSSI_ea, buffer(n, 6)); n = n + 6
+		elseif (cmd == 136) then
+			-- GET_BSS_INFO
+			n = n + 4 -- unknown
+			par:add_le(f.GET_BSS_INFO_version, buffer(n, 4)); n = n + 4
+			par:add_le(f.GET_BSS_INFO_length, buffer(n, 4)); n = n + 4
+			par:add_le(f.brcmf_bssid, buffer(n, 6)); n = n + 6
+			par:add_le(f.GET_BSS_INFO_beacon_period, buffer(n, 2)); n = n + 2
+			par:add_le(f.GET_BSS_INFO_capability, buffer(n, 2)); n = n + 2
+			par:add_le(f.GET_BSS_INFO_SSID_len, buffer(n, 1)); n = n + 1
+			par:add_le(f.GET_BSS_INFO_SSID, buffer(n, 32)); n = n + 32
+			n = n + 1 -- padding in struct
+			par:add_le(f.GET_BSS_INFO_rateset_count, buffer(n, 4)); n = n + 4
+			par:add_le(f.GET_BSS_INFO_rateset_rates, buffer(n, 16)); n = n + 16
+			n = n + parse_chanspec(bcm, buffer(n), pinfo, par, 1)
+			par:add_le(f.GET_BSS_INFO_atim_window, buffer(n, 2)); n = n + 2
+			par:add_le(f.GET_BSS_INFO_dtim_period, buffer(n, 1)); n = n + 1
+			n = n + 1 -- padding in struct
+			par:add_le(f.GET_BSS_INFO_RSSI, buffer(n, 2)); n = n + 2
+			par:add_le(f.GET_BSS_INFO_phy_noise, buffer(n, 1)); n = n + 1
+			par:add_le(f.GET_BSS_INFO_n_cap, buffer(n, 1)); n = n + 1
+			n = n + 2 -- padding in struct
+			par:add_le(f.GET_BSS_INFO_nbss_cap, buffer(n, 4)); n = n + 4
+			par:add_le(f.GET_BSS_INFO_ctl_ch, buffer(n, 1)); n = n + 1
+			n = n + 3 -- padding in struct
+			par:add_le(f.GET_BSS_INFO_reserved32, buffer(n, 4)); n = n + 4
+			par:add_le(f.GET_BSS_INFO_flags, buffer(n, 1)); n = n + 1
+			par:add_le(f.GET_BSS_INFO_reserved, buffer(n, 3)); n = n + 3
+			par:add_le(f.GET_BSS_INFO_basic_mcs, buffer(n, 16)); n = n + 16
+			par:add_le(f.GET_BSS_INFO_ie_offset, buffer(n, 2)); n = n + 2
+			n = n + 2 -- padding in struct
+			par:add_le(f.GET_BSS_INFO_ie_length, buffer(n, 4)); n = n + 4
+			par:add_le(f.GET_BSS_INFO_SNR, buffer(n, 2)); n = n + 2
 		elseif (cmd == 217) then
 			-- WLC_GET_VALID_CHANNELS
 			local count = buffer(n, 4):le_uint()
@@ -322,7 +354,6 @@ function dissector(inbuffer, pinfo, tree, out)
 				par:add_le(f.bcm_var_join_active_time, buffer(n, 4)); n = n + 4
 				par:add_le(f.bcm_var_join_passive_time, buffer(n, 4)); n = n + 4
 				par:add_le(f.bcm_var_join_home_time, buffer(n, 4)); n = n + 4
-
 				par:add_le(f.bcm_var_join_bssid, buffer(n, 6)); n = n + 6
 				n = n + 2 -- padding in struct
 				local count = buffer(n, 4):le_uint()
@@ -850,3 +881,26 @@ f.WLC_GET_RSSI_ea = ProtoField.ether("bcm_cdc_ioctl.WLC_GET_RSSI_ea", "ea")
 
 f.WLC_GET_VALID_CHANNELS_count = ProtoField.int32("bcm_cdc_ioctl.WLC_GET_VALID_CHANNELS_count", "count")
 f.WLC_GET_VALID_CHANNELS_channel = ProtoField.int32("bcm_cdc_ioctl.WLC_GET_VALID_CHANNELS_channel", "channel")
+
+f.GET_BSS_INFO_version = ProtoField.uint32("bcm_cdc_ioctl.GET_BSS_INFO_version", "version")
+f.GET_BSS_INFO_length = ProtoField.uint32("bcm_cdc_ioctl.GET_BSS_INFO_length", "length")
+f.GET_BSS_INFO_beacon_period = ProtoField.uint16("bcm_cdc_ioctl.GET_BSS_INFO_beacon_period", "beacon_period")
+f.GET_BSS_INFO_capability = ProtoField.uint16("bcm_cdc_ioctl.GET_BSS_INFO_capability", "capability")
+f.GET_BSS_INFO_SSID_len = ProtoField.uint8("bcm_cdc_ioctl.GET_BSS_INFO_SSID_len", "SSID_len")
+f.GET_BSS_INFO_SSID = ProtoField.stringz("bcm_cdc_ioctl.GET_BSS_INFO_SSID", "SSID")
+f.GET_BSS_INFO_rateset_count = ProtoField.uint32("bcm_cdc_ioctl.GET_BSS_INFO_rateset_count", "rateset_count")
+f.GET_BSS_INFO_rateset_rates = ProtoField.bytes("bcm_cdc_ioctl.GET_BSS_INFO_rateset_rates", "rateset_rates")
+f.GET_BSS_INFO_atim_window = ProtoField.uint16("bcm_cdc_ioctl.GET_BSS_INFO_atim_window", "atim_window")
+f.GET_BSS_INFO_dtim_period = ProtoField.uint8("bcm_cdc_ioctl.GET_BSS_INFO_dtim_period", "dtim_period")
+f.GET_BSS_INFO_RSSI = ProtoField.int16("bcm_cdc_ioctl.GET_BSS_INFO_RSSI", "RSSI")
+f.GET_BSS_INFO_phy_noise = ProtoField.uint8("bcm_cdc_ioctl.GET_BSS_INFO_phy_noise", "phy_noise")
+f.GET_BSS_INFO_n_cap = ProtoField.uint8("bcm_cdc_ioctl.GET_BSS_INFO_n_cap", "n_cap")
+f.GET_BSS_INFO_nbss_cap = ProtoField.uint32("bcm_cdc_ioctl.GET_BSS_INFO_nbss_cap", "nbss_cap")
+f.GET_BSS_INFO_ctl_ch = ProtoField.uint8("bcm_cdc_ioctl.GET_BSS_INFO_ctl_ch", "ctl_ch")
+f.GET_BSS_INFO_reserved32 = ProtoField.uint32("bcm_cdc_ioctl.GET_BSS_INFO_reserved32", "reserved32")
+f.GET_BSS_INFO_flags = ProtoField.uint8("bcm_cdc_ioctl.GET_BSS_INFO_flags", "flags")
+f.GET_BSS_INFO_reserved = ProtoField.bytes("bcm_cdc_ioctl.GET_BSS_INFO_reserved", "reserved")
+f.GET_BSS_INFO_basic_mcs = ProtoField.bytes("bcm_cdc_ioctl.GET_BSS_INFO_basic_mcs", "basic_mcs")
+f.GET_BSS_INFO_ie_offset = ProtoField.uint16("bcm_cdc_ioctl.GET_BSS_INFO_ie_offset", "ie_offset")
+f.GET_BSS_INFO_ie_length = ProtoField.uint32("bcm_cdc_ioctl.GET_BSS_INFO_ie_length", "ie_length")
+f.GET_BSS_INFO_SNR = ProtoField.uint16("bcm_cdc_ioctl.GET_BSS_INFO_SNR", "SNR")

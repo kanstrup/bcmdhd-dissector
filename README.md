@@ -23,24 +23,12 @@ wireshark with the lua dissector plugins installed.
 1) Patch brcmfmac driver with <pre>0001-brcmfmac-Add-tracepoints-for-bcmdhd-dissector-tool.patch</pre>
 
 2) Enable BRCMDBG config flag and build brcmfmac module.
-3) Enable dissect debug prints:
 
-   Control and event messages:
-   <pre>echo 0x00100000 > /sys/module/brcmfmac/parameters/debug</pre>
+3) Start trace-cmd recording: <pre>trace-cmd record -e brcmfmac:brcmf_dissect_hexdump -e brcmfmac:brcmf_dissect_data_hexdump</pre>
+4) Stop recording when done
 
-   TX and RX data:
-   <pre>echo 0x00200000 > /sys/module/brcmfmac/parameters/debug</pre>
-
-   Both:
-   <pre>echo 0x00300000 > /sys/module/brcmfmac/parameters/debug</pre>
-
-   Can also be set at insmod with: <pre>insmod brcmfmac.ko debug=0x00300000</pre>
-
-4) Start trace-cmd recording: <pre>trace-cmd record -e brcmfmac:brcmf_dissect_hexdump -e brcmfmac:brcmf_dissect_data_hexdump</pre>
-5) Stop recording when done
-
-6) Create trace-cmd report and let text2pcap tool convert to pcap format: <pre>trace-cmd report | text2pcap - dump.cap</pre>
-7) Open pcap file with wireshark
+5) Create trace-cmd report and let text2pcap tool convert to pcap format: <pre>trace-cmd report | text2pcap - dump.cap</pre>
+6) Open pcap file with wireshark
 
 NOTE: With some regexp magic one can trick text2pcap to also include timestamps of recorded events in the capture file: <pre>trace-cmd report | perl -pe 's/.*\[\d{3}\]\s+(\d+.\d{6}):.*\n(.*)/$1 $2/' | text2pcap -t "%s." - dump.cap</pre>
 

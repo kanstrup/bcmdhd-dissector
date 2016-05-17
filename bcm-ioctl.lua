@@ -46,8 +46,8 @@ function is_int_var(wlc_var)
 		"roam_off", "p2p_disc", "pkt_filter_mode", "bcn_timeout", "wlfc_mode",
 		"dtim_assoc", "bw_cap", "bw_cap", "mimo_bw_cap", "nmode", "p2p_dev",
 		"btc_params", "toe_ol", "ccx_enable", "bus:txglomalign", "assoc_listen",
-	        "rtsthresh", "fragthresh", "wowl_clear", "wowl", "wowl_activate",
-	        "obss_coex", "vhtmode", "rxchain" }
+		"rtsthresh", "fragthresh", "wowl_clear", "wowl", "wowl_activate",
+		"obss_coex", "vhtmode", "rxchain" }
 
 	for i,v in pairs(int_vars) do
 		if v == wlc_var then
@@ -142,17 +142,17 @@ end
 
 function parse_event_msgs(buffer, pinfo, tree)
 	local n = 0
-        for i = 0, 127 do
-                local by = math.floor(i / 8)
-                local bi = (i % 8)
-                local b = buffer(by, 1):uint()
+	for i = 0, 127 do
+		local by = math.floor(i / 8)
+		local bi = (i % 8)
+		local b = buffer(by, 1):uint()
 
-                if (bit.band(b, bit.lshift(1, bi)) > 0) then
-                        tree:add(f.bcm_var_event_msgs_event, buffer(by, 1), i);
-                end
+		if (bit.band(b, bit.lshift(1, bi)) > 0) then
+			tree:add(f.bcm_var_event_msgs_event, buffer(by, 1), i);
+		end
 
-        end
-        return 16
+	end
+	return 16
 end
 
 function bcmioctlin.dissector(inbuffer, pinfo, tree)

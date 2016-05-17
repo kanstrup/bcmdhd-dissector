@@ -74,6 +74,8 @@ function is_int_cmd(wlc_cmd)
 		32,  -- SET_SRL
 		34,  -- SET_LRL
 		38,  -- SET_RADIO
+		46,  -- GET_REGULATORY
+		47,  -- SET_REGULATORY
 		49,  -- SET_PASSIVE_SCAN
 		75,  -- GET_BCNPRD
 		76,  -- SET_BCNPRD

@@ -366,6 +366,21 @@ function dissector(inbuffer, pinfo, tree, out)
 				for i = 1, count do
 					n = n + parse_chanspec(bcm, buffer(n), pinfo, par, 1)
 				end
+			elseif var_str == "pkt_filter_enable" then
+				par:add_le(f.bcm_var_pkt_filter_enable_id, buffer(n, 4)); n = n + 4
+				par:add_le(f.bcm_var_pkt_filter_enable_enable, buffer(n, 4)); n = n + 4
+				parsed = true;
+			elseif var_str == "pkt_filter_add" then
+				par:add_le(f.bcm_var_pkt_filter_add_id, buffer(n, 4)); n = n + 4
+				par:add_le(f.bcm_var_pkt_filter_add_type, buffer(n, 4)); n = n + 4
+				par:add_le(f.bcm_var_pkt_filter_add_negate_match, buffer(n, 4)); n = n + 4
+
+				par:add_le(f.bcm_var_pkt_filter_pattern_offset, buffer(n, 4)); n = n + 4
+				local size_bytes = buffer(n, 4):le_uint()
+				par:add_le(f.bcm_var_pkt_filter_pattern_size_bytes, buffer(n, 4)); n = n + 4
+				par:add_le(f.bcm_var_pkt_filter_pattern_mask, buffer(n, size_bytes)); n = n + size_bytes
+				par:add_le(f.bcm_var_pkt_filter_pattern_pattern, buffer(n, size_bytes)); n = n + size_bytes
+				parsed = true;
 			end
 			if parsed and buffer:len() > n then
 				par:add(f.unused, buffer(n)); n = buffer:len()
@@ -845,6 +860,18 @@ f.bcm_var_join_passive_time = ProtoField.uint32("bcm_var_join.scan_passive_time"
 f.bcm_var_join_home_time = ProtoField.uint32("bcm_var_join.scan_home_time", "scan_home_time")
 f.bcm_var_join_bssid = ProtoField.ether("bcm_cdc_ioctl.bcm_var_join_assoc_bssid", "assoc_bssid")
 f.bcm_var_join_chanspec_num = ProtoField.uint32("bcm_cdc_ioctl.bcm_var_join_assoc_chanspec_num", "assoc_chanspec_num")
+
+f.bcm_var_pkt_filter_enable_id = ProtoField.uint32("bcm_var_pkt_filter_enable.id", "id", base.DEC)
+f.bcm_var_pkt_filter_enable_enable = ProtoField.bool("bcm_var_pkt_filter_enable.enable", "enable")
+
+f.bcm_var_pkt_filter_add_id = ProtoField.uint32("bcm_var_pkt_filter_add.id", "id", base.DEC)
+f.bcm_var_pkt_filter_add_type = ProtoField.uint32("bcm_var_pkt_filter_add.type", "type")
+f.bcm_var_pkt_filter_add_negate_match = ProtoField.bool("bcm_var_pkt_filter_add.negate_match", "negate_match")
+
+f.bcm_var_pkt_filter_pattern_offset = ProtoField.uint32("bcm_var_pkt_filter_pattern.offset", "offset")
+f.bcm_var_pkt_filter_pattern_size_bytes = ProtoField.uint32("bcm_var_pkt_filter_pattern.size_bytes", "size_bytes")
+f.bcm_var_pkt_filter_pattern_mask = ProtoField.bytes("bcm_var_pkt_filter_pattern.mask", "mask")
+f.bcm_var_pkt_filter_pattern_pattern = ProtoField.bytes("bcm_var_pkt_filter_pattern.pattern", "pattern")
 
 f.chanspec_chan = ProtoField.uint8("bcm_cdc_ioctl.chanspec.chan", "channel")
 f.chanspec_other = ProtoField.uint8("bcm_cdc_ioctl.chanspec.other", "other")

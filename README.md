@@ -3,6 +3,14 @@ bcmdhd-dissector
 
 Wireshark protocol dissector for brcmfmac host<->firmware communication protocols
 
+With this plugin the communication protocol between the Linux kernel brcmfmac driver
+and the wifi chip firmware is decoded using Wireshark. Below screenshot shows some
+of the data flow when inserting a brcmfmac compatible wifi dongle and bringing the
+interface up.
+
+![alt screenshot](https://github.com/kanstrup/bcmdhd-dissector/blob/master/examples/screenshot.png)
+
+
 Install instructions
 --------------------
 1) Copy *.lua to ~/.wireshark/plugins/ folder

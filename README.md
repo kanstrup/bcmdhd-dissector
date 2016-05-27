@@ -37,7 +37,7 @@ wireshark with the lua dissector plugins installed.
 
 2) Enable BRCMDBG config flag and build brcmfmac module.
 
-3) Start trace-cmd recording: <pre>trace-cmd record -e brcmfmac:brcmf_dissect_hexdump -e brcmfmac:brcmf_dissect_data_hexdump</pre>
+3) Start trace-cmd recording: <pre>trace-cmd record -e brcmfmac:brcmf_dissect_event -e brcmfmac:brcmf_dissect_ioctl -e brcmfmac:brcmf_dissect_data</pre>
 4) Stop recording when done
 
 5) Create trace-cmd report and let text2pcap tool convert to pcap format: <pre>trace-cmd report | text2pcap - dump.cap</pre>

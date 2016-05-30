@@ -42,14 +42,14 @@ end
 function is_int_var(wlc_var)
 	local int_vars = {
 		"allmulti", "ampdu_hostreorder", "apsta", "arpoe", "arp_ol",
-		"assoc_listen", "bcn_timeout", "bcn_timeout", "btc_params",
-		"bus:txglomalign", "bw_cap", "ccx_enable", "chanspec",
-		"dtim_assoc", "fragthresh", "mimo_bw_cap", "mpc", "ndoe",
-		"nmode", "obss_coex", "p2p_dev", "p2p_disc", "pfn",
-		"pkt_filter_mode", "qtxpower", "roam_off", "rtsthresh",
-		"rxchain", "tdls_enable", "tlv", "toe_ol", "txbf", "vhtmode",
-		"wlfc_mode", "wowl", "wowl_activate", "wowl_cap", "wowl_clear",
-		"wsec"
+		"assoc_listen", "auth", "wpa_auth", "bcn_timeout",
+		"bcn_timeout", "btc_params", "bus:txglomalign", "bw_cap",
+		"ccx_enable", "chanspec", "dtim_assoc", "fragthresh",
+		"mimo_bw_cap", "mpc", "ndoe", "nmode", "obss_coex", "p2p_dev",
+		"p2p_disc", "per_chan_info", "pfn", "pkt_filter_mode",
+		"qtxpower", "roam_off", "rtsthresh", "rxchain", "tdls_enable",
+		"tlv", "toe_ol", "txbf", "vhtmode", "wlfc_mode", "wowl",
+		"wowl_activate", "wowl_cap", "wowl_clear", "wsec"
 	}
 
 	for i,v in pairs(int_vars) do

@@ -301,6 +301,11 @@ function dissector(inbuffer, pinfo, tree, out)
 			pinfo.cols.info:append(" <reply data>")
 			if last_get_var == "event_msgs" then
 				n = n + parse_event_msgs(buffer(n), pinfo, par)
+			elseif is_int_var(last_get_var) then
+				local value = buffer(n, 4)
+				pinfo.cols.info:append(" "..value:le_uint())
+				par:add_le(f.value32, value); n = n + 4
+				parsed = true
 			elseif last_get_var == "ver" then
 				par:add(f.bcm_var_ver_version, buffer(n));
 			elseif last_get_var == "cap" then

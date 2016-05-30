@@ -25,6 +25,7 @@ local scan_type_strings = {}
 local p2p_state_strings = {}
 local event_msgs_strings = {}
 local p2p_if_type_strings = {}
+local join_pref_types_strings = {}
 local last_get_var = ""
 
 function bcmioctlout.init()
@@ -239,6 +240,12 @@ function dissector(inbuffer, pinfo, tree, out)
 			-- WLC_SET_ROAM_DELTA
 			par:add_le(f.WLC_SET_ROAM_DELTA_delta, buffer(n, 4)); n = n + 4
 			par:add_le(f.WLC_SET_ROAM_DELTA_band, buffer(n, 4)); n = n + 4
+		elseif (cmd == 121) then
+			-- WLC_SCB_AUTHORIZE
+			par:add_le(f.WLC_SCB_AUTHORIZE_ea, buffer(n, 6)); n = n + 6
+		elseif (cmd == 122) then
+			-- WLC_SCB_DEAUTHORIZE
+			par:add_le(f.WLC_SCB_DEAUTHORIZE_ea, buffer(n, 6)); n = n + 6
 		elseif (cmd == 127) then
 			-- WLC_GET_RSSI
 			par:add_le(f.WLC_GET_RSSI_val, buffer(n, 4)); n = n + 4
@@ -294,6 +301,13 @@ function dissector(inbuffer, pinfo, tree, out)
 			pinfo.cols.info:append(" <reply data>")
 			if last_get_var == "event_msgs" then
 				n = n + parse_event_msgs(buffer(n), pinfo, par)
+			elseif last_get_var == "ver" then
+				par:add(f.bcm_var_ver_version, buffer(n));
+			elseif last_get_var == "cap" then
+				local caps = buffer(n):stringz()
+				for w in caps:gmatch("%S+") do
+					par:add(f.bcm_var_cap_capability, buffer(n, w:len() + 1)); n = n + w:len() + 1
+				end
 			end
 		elseif (cmd == 263 and out == 1) then
 			-- WLC_SET_VAR
@@ -381,6 +395,13 @@ function dissector(inbuffer, pinfo, tree, out)
 				par:add_le(f.bcm_var_pkt_filter_pattern_mask, buffer(n, size_bytes)); n = n + size_bytes
 				par:add_le(f.bcm_var_pkt_filter_pattern_pattern, buffer(n, size_bytes)); n = n + size_bytes
 				parsed = true;
+			elseif var_str == "join_pref" then
+				while n + 4 <= buffer:len() do
+					par:add_le(f.bcm_var_join_pref_type, buffer(n, 1)); n = n + 1
+					par:add_le(f.bcm_var_join_pref_len, buffer(n, 1)); n = n + 1
+					par:add_le(f.bcm_var_join_pref_rssi_gain, buffer(n, 1)); n = n + 1
+					par:add_le(f.bcm_var_join_pref_band, buffer(n, 1)); n = n + 1
+				end
 			end
 			if parsed and buffer:len() > n then
 				par:add(f.unused, buffer(n)); n = buffer:len()
@@ -819,6 +840,12 @@ p2p_if_type_strings[1] = "GO"
 p2p_if_type_strings[2] = "DYNBCN_GO"
 p2p_if_type_strings[3] = "DEV"
 
+join_pref_types_strings[0] = "UNKNOWN"
+join_pref_types_strings[1] = "RSSI"
+join_pref_types_strings[2] = "WPA"
+join_pref_types_strings[3] = "BAND"
+join_pref_types_strings[4] = "RSSI_DELTA"
+
 f.value32 = ProtoField.uint32("bcm_cdc_ioctl.value32", "value32", base.DEC)
 f.unused = ProtoField.bytes("bcm_cdc_ioctl.data", "unused")
 
@@ -872,6 +899,15 @@ f.bcm_var_pkt_filter_pattern_offset = ProtoField.uint32("bcm_var_pkt_filter_patt
 f.bcm_var_pkt_filter_pattern_size_bytes = ProtoField.uint32("bcm_var_pkt_filter_pattern.size_bytes", "size_bytes")
 f.bcm_var_pkt_filter_pattern_mask = ProtoField.bytes("bcm_var_pkt_filter_pattern.mask", "mask")
 f.bcm_var_pkt_filter_pattern_pattern = ProtoField.bytes("bcm_var_pkt_filter_pattern.pattern", "pattern")
+
+f.bcm_var_ver_version = ProtoField.stringz("bcm_var_ver.version", "version")
+
+f.bcm_var_join_pref_type = ProtoField.uint8("bcm_var_join_pref.type", "type", base.DEC, join_pref_types_strings)
+f.bcm_var_join_pref_len = ProtoField.uint8("bcm_var_join_pref.len", "len")
+f.bcm_var_join_pref_rssi_gain = ProtoField.uint8("bcm_var_join_pref.rssi_gain", "rssi_gain")
+f.bcm_var_join_pref_band = ProtoField.uint8("bcm_var_join_pref.band", "band", base.DEC, band_strings)
+
+f.bcm_var_cap_capability = ProtoField.string("bcm_var_cap.capability", "capability")
 
 f.chanspec_chan = ProtoField.uint8("bcm_cdc_ioctl.chanspec.chan", "channel")
 f.chanspec_other = ProtoField.uint8("bcm_cdc_ioctl.chanspec.other", "other")
@@ -936,3 +972,7 @@ f.GET_BSS_INFO_basic_mcs = ProtoField.bytes("bcm_cdc_ioctl.GET_BSS_INFO_basic_mc
 f.GET_BSS_INFO_ie_offset = ProtoField.uint16("bcm_cdc_ioctl.GET_BSS_INFO_ie_offset", "ie_offset")
 f.GET_BSS_INFO_ie_length = ProtoField.uint32("bcm_cdc_ioctl.GET_BSS_INFO_ie_length", "ie_length")
 f.GET_BSS_INFO_SNR = ProtoField.uint16("bcm_cdc_ioctl.GET_BSS_INFO_SNR", "SNR")
+
+f.WLC_SCB_AUTHORIZE_ea = ProtoField.ether("bcm_cdc_ioctl.WLC_SCB_AUTHORIZE_ea", "ea")
+
+f.WLC_SCB_DEAUTHORIZE_ea = ProtoField.ether("bcm_cdc_ioctl.WLC_SCB_DEAUTHORIZE_ea", "ea")
